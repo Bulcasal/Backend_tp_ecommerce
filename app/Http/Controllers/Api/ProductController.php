@@ -14,9 +14,27 @@ class ProductController extends Controller
     {
         $products = Product::with('category')->get();
 
+        $productsData = $products->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'stock' => $product->stock,
+                '_embedded' => [
+                    'category' => $product->category
+                ],
+                '_links' => [
+                    'self' => route('admin.products.show', ['product' => $product->id]),
+                    'edit' => route('admin.products.update', ['product' => $product->id]),
+                    'delete' => route('admin.products.destroy', ['product' => $product->id]),
+                ]
+            ];
+        });
+
         return response()->json([
             'status' => 'success',
-            'data' => $products
+            'data' => $productsData
         ]);
     }
 
@@ -37,7 +55,14 @@ class ProductController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Product created',
-            'data' => $product
+            'data' => [
+                'product' => $product,
+                '_links' => [
+                    'self' => route('admin.products.show', ['product' => $product->id]),
+                    'edit' => route('admin.products.update', ['product' => $product->id]),
+                    'delete' => route('admin.products.destroy', ['product' => $product->id]),
+                ]
+            ]
         ], 201);
     }
 
@@ -45,14 +70,22 @@ class ProductController extends Controller
     {
         return response()->json([
             'status' => 'success',
-            'data' => $product->load('category')
+            'data' => [
+                'product' => $product->load('category'),
+                '_embedded' => [
+                    'category' => $product->category
+                ],
+                '_links' => [
+                    'self' => route('admin.products.show', ['product' => $product->id]),
+                    'edit' => route('admin.products.update', ['product' => $product->id]),
+                    'delete' => route('admin.products.destroy', ['product' => $product->id]),
+                ]
+            ]
         ]);
     }
 
-    public function update(
-        Request $request, 
-        Product $product
-    ): JsonResponse {
+    public function update(Request $request, Product $product): JsonResponse
+    {
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|required|string',
@@ -64,15 +97,22 @@ class ProductController extends Controller
 
         if (isset($validated['name'])) {
             $validated['slug'] = Str::slug($validated['name']);
-
-            $product->update($validated);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Product updated',
-                'data' => $product
-            ]);
         }
+
+        $product->update($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Product updated',
+            'data' => [
+                'product' => $product,
+                '_links' => [
+                    'self' => route('admin.products.show', ['product' => $product->id]),
+                    'edit' => route('admin.products.update', ['product' => $product->id]),
+                    'delete' => route('admin.products.destroy', ['product' => $product->id]),
+                ]
+            ]
+        ]);
     }
 
     public function destroy(Product $product): JsonResponse

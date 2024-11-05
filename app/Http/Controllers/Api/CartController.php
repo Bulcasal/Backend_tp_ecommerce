@@ -7,12 +7,37 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+
 class CartController extends Controller
 {
+    public function listProducts(): JsonResponse
+    {
+        $products = Product::all();
+
+        $productsData = $products->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'stock' => $product->stock,
+                '_links' => [
+                    'self' => route('cart.listProducts', ['product' => $product->id]),
+                    'add_to_cart' => route('cart.store'),
+                ]
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $productsData
+        ]);
+    }
+
+
     public function index(): JsonResponse
     {
         $cart = Session::get('cart', []);
-
         $cartItems = [];
         $total = 0;
 
@@ -36,8 +61,9 @@ class CartController extends Controller
                 'items' => $cartItems,
                 'total' => $total
             ]
-            ]);
+        ]);
     }
+
 
     public function store(Request $request): JsonResponse
     {
@@ -47,7 +73,7 @@ class CartController extends Controller
         ]);
 
         $product = Product::findOrFail($validated['product_id']);
-        
+
         if ($product->stock < $validated['quantity']) {
             return response()->json([
                 'status' => 'error',
@@ -56,7 +82,7 @@ class CartController extends Controller
         }
 
         $cart = Session::get('cart', []);
-        
+
         if (isset($cart[$validated['product_id']])) {
             $cart[$validated['product_id']] += $validated['quantity'];
         } else {
@@ -71,6 +97,7 @@ class CartController extends Controller
         ], 201);
     }
 
+
     public function update(Request $request, $productId): JsonResponse
     {
         $validated = $request->validate([
@@ -78,7 +105,7 @@ class CartController extends Controller
         ]);
 
         $product = Product::findOrFail($productId);
-        
+
         if ($product->stock < $validated['quantity']) {
             return response()->json([
                 'status' => 'error',
@@ -102,6 +129,7 @@ class CartController extends Controller
         ]);
     }
 
+ 
     public function deleteProduct($productId): JsonResponse
     {
         $cart = Session::get('cart', []);
@@ -117,6 +145,7 @@ class CartController extends Controller
         ]);
     }
 
+
     public function clearCart(): JsonResponse
     {
         Session::forget('cart');
@@ -124,6 +153,6 @@ class CartController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Cart cleared'
-        ])
+        ]);
     }
 }
